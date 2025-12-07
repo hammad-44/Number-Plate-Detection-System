@@ -1,0 +1,65 @@
+# Implementation Plan - Number Plate Detection System
+
+## Goal Description
+Create a complete, production-ready desktop software for Number Plate Detection using Python. The system will feature a **Modern UI** (using PyQt-Fluent-Widgets), support for **Live Camera** and **Video/Image File** inputs, and a local **SQLite Database**. Optimizations for "Mid CPU" logic will include using `onnxruntime` for inference and `QThread` for non-blocking UI.
+
+## User Review Required
+> [!IMPORTANT]
+> **Technology Stack Choice**: I have selected **PyQt6** with **PyQt-Fluent-Widgets** to achieve the "Modern and Beautiful" requirement while maintaining native performance on Windows. This avoids the heavy overhead of a browser-based (Electron) app, ensuring smoother performance on a mid-range CPU.
+
+> [!NOTE]
+> **Model Usage**: The system will use the existing [models/best.onnx](file:///d:/FYPs/Number%20Plate%20Detection%20System/models/best.onnx). I assume this is a YOLO-based ONNX export. I will use `onnxruntime` for inference.
+
+## Proposed Changes
+
+### Project Structure (New)
+I will create the following directory structure:
+```text
+NPDS/
+├── core/
+│   ├── detector.py       # wrapper for onnxruntime
+│   ├── ocr.py            # wrapper for EasyOCR/PaddleOCR
+│   └── video_thread.py   # QThread for video capture
+├── database/
+│   ├── db_manager.py     # SQLite management
+│   └── schema.sql        # Database tables
+├── ui/
+│   ├── main_window.py    # Main Application Window
+│   └── pages/            # Individual pages (Dashboard, Home, Settings)
+├── assets/               # Icons, images
+└── main.py               # Entry point
+```
+
+### Database
+#### [NEW] `database/db_manager.py`
+- **Tables**:
+    - `plates`: id, number_text, confidence, timestamp, image_path, source (camera/video).
+    - `logs`: system events (start, stop, errors).
+- **Optimization**: Use connection pooling or singleton pattern. Ensure writes are done in a separate thread if high frequency.
+
+### Core Logic
+#### [NEW] `core/detector.py`
+- Class `PlateDetector`: Loads [best.onnx](file:///d:/FYPs/Number%20Plate%20Detection%20System/models/best.onnx).
+- Method `detect(frame)`: Returns bounding boxes and class IDs.
+- Optimization: Resize frame to model input size (e.g., 640x640) efficiently.
+
+#### [NEW] `core/ocr.py`
+- Class `OCREngine`: Loads OCR model.
+- Method `recognize(plate_crop)`: Returns text.
+- Validation: Filter results to match Pakistani plate formats (e.g., ABC-1234).
+
+### User Interface
+#### [NEW] `ui/main_window.py`
+- Using `qfluentwidgets.FluentWindow`.
+- Navigation items: Home (Dashboard), Live View, Media Scan, Database.
+
+## Verification Plan
+
+### Automated Tests
+- I will run the application and verify it launches without errors.
+- `python main.py`
+
+### Manual Verification
+- **Live Feed**: Connect a webcam (or dummy video) and verify 30fps+ rendering.
+- **Scanning**: Drop a video file and check if plates are detected and saved to DB.
+- **Database**: Open the "Records" page and see if entries populate.

@@ -1,0 +1,50 @@
+# Number Plate Detection System - Walkthrough
+
+## Overview
+This is a modern, AI-powered Desktop Software for detecting Pakistani Number Plates from Live Camera or Media Files. It uses **YOLO** (ONNX Runtime) for detection and **EasyOCR** for text recognition, wrapped in a **PyQt6 + Fluent-Widgets** GUI.
+
+## Setup & Run
+
+1. **Install Dependencies**:
+   Open a terminal in the project folder and run:
+   ```bash
+   pip install -r requirements.txt
+   ```
+   *(Note: Ensure you have [models/best.onnx](file:///d:/FYPs/Number%20Plate%20Detection%20System/models/best.onnx) in the `models` folder)*
+
+2. **Run the Application**:
+   ```bash
+   python main.py
+   ```
+
+## Features Guide
+
+### 1. Dashboard
+- View total detections and today's activity at a glance.
+- Quick navigation to other modules.
+
+### 2. Live Feed (Camera)
+- Go to the **Live Feed** tab.
+- Click **Start Camera** (Play Icon).
+- The system will access your default webcam.
+- **Real-time Logic**: It detects plates every ~5 frames to ensure smooth UI performance on mid-range CPUs.
+- Detected plates are highlighted in Green, and the text is displayed on screen and saved to the database.
+
+### 3. Media Scan
+- Go to the **Media Scan** tab.
+- Click **Select Media**.
+- Choose an Image (`.jpg`, `.png`) or Video (`.mp4`).
+- **Images**: Automatically processed, results drawn on the image.
+- **Videos**: (Demo) loads the video file reference.
+
+### 4. Records (Database)
+- Go to the **Records** tab.
+- View a table of all historical detections.
+- Columns: ID, Number Text, Confidence, Timestamp, Source.
+- Data is persistent in `npds_data.db`.
+
+## Tech Stack
+- **GUI**: PyQt6, PyQt-Fluent-Widgets
+- **AI/ML**: ONNX Runtime (YOLO), EasyOCR
+- **Database**: SQLite3 (via SQLAlchemy)
+- **Computer Vision**: OpenCV

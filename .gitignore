@@ -1,2 +1,39 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# Virtual Env
 venv/
-models/
+env/
+ENV/
+
+# Database
+*.sqlite3
+*.db
+
+# Models
+# models/ # Keep models in git? Users instructions say 'model in models folder'. Usually large files are gitignored but I'll keep it open unless huge.
+# The user already has it there.
+
+# IDE
+.idea/
+.vscode/

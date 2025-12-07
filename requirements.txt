@@ -1,0 +1,13 @@
+PyQt5
+PyQtWebEngine
+PyQt-Fluent-Widgets
+numpy
+opencv-python
+onnxruntime-gpu; sys_platform == 'linux'
+onnxruntime; sys_platform == 'win32'
+easyocr
+torch
+torchvision
+matplotlib
+sqlalchemy
+pillow

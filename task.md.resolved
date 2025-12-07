@@ -1,0 +1,27 @@
+# Task: Number Plate Detection System (NPDS)
+
+- [ ] **Phase 1: Project Initialization & Architecture** <!-- id: 0 -->
+    - [ ] Create Project Structure (dirs: ui, core, database, assets) <!-- id: 1 -->
+    - [ ] Create `requirements.txt` with dependencies (PyQt6, PyQt-Fluent-Widgets, onnxruntime, opencv-python, etc.) <!-- id: 2 -->
+    - [ ] Initialize Git rules ([.gitignore](file:///d:/FYPs/Number%20Plate%20Detection%20System/.gitignore)) <!-- id: 3 -->
+- [ ] **Phase 2: Backend Logic (Core & Database)** <!-- id: 4 -->
+    - [ ] **Database Setup**: Design SQLite Schema (Plates, Logs) and implement `DatabaseManager` class. <!-- id: 5 -->
+    - [ ] **Detection Engine**: Implement `PlateDetector` using `onnxruntime` for [models/best.onnx](file:///d:/FYPs/Number%20Plate%20Detection%20System/models/best.onnx). <!-- id: 6 -->
+    - [ ] **OCR Engine**: Implement `OCREngine` (EasyOCR or PaddleOCR - optimized for CPU). <!-- id: 7 -->
+    - [ ] **Video Processor**: Create `VideoThread` (QThread) for non-blocking camera/video frame reading. <!-- id: 8 -->
+- [ ] **Phase 3: Modern UI Implementation (PyQt-Fluent-Widgets)** <!-- id: 9 -->
+    - [ ] **Main Window**: Setup `FluentWindow` with Navigation Interface (Side menu). <!-- id: 10 -->
+    - [ ] **Dashboard Page**: Stats (Total Detections, Recent Today) and quick actions. <!-- id: 11 -->
+    - [ ] **Live Feed Page**: Camera Viewport + Real-time results overlay + Start/Stop controls. <!-- id: 12 -->
+    - [ ] **Media Scan Page**: File Picker (Image/Video), Processing Progress, Result View. <!-- id: 13 -->
+    - [ ] **Records Page**: Data Table (QTableWidget/Fluent Table) for browsing history, Search/Filter. <!-- id: 14 -->
+- [ ] **Phase 4: Integration & Optimization** <!-- id: 15 -->
+    - [ ] Integrate `VideoThread` with `Live Feed Page`. <!-- id: 16 -->
+    - [ ] Integrate `PlateDetector` + `OCREngine` into the video loop. <!-- id: 17 -->
+    - [ ] Implement collision handling/duplicate handling in Database. <!-- id: 18 -->
+    - [ ] Performance Tuning: Ensure UI doesn't freeze (signal/slot usage). <!-- id: 19 -->
+- [ ] **Phase 5: Verification & Walkthrough** <!-- id: 20 -->
+    - [ ] Manual Test: Live Camera. <!-- id: 21 -->
+    - [ ] Manual Test: Video File. <!-- id: 22 -->
+    - [ ] Verify Data Persistence. <!-- id: 23 -->
+    - [ ] Create Walkthrough. <!-- id: 24 -->
