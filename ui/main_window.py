@@ -11,6 +11,7 @@ from ui.pages.settings import Settings
 from ui.pages.analytics import Analytics
 from ui.pages.watchlist import Watchlist
 from ui.pages.help import HelpPage
+from ui.pages.model_comparison import ModelComparisonPage
 from database.db_manager import DatabaseManager
 
 class MainWindow(FluentWindow):
@@ -31,6 +32,7 @@ class MainWindow(FluentWindow):
         self.records_interface = Records(self.db)
         self.analytics_interface = Analytics(self.db)
         self.watchlist_interface = Watchlist(self.db)
+        self.comparison_interface = ModelComparisonPage(self.db)
         self.help_interface = HelpPage(self.db)
         self.settings_interface = Settings(self.db)
         
@@ -47,6 +49,7 @@ class MainWindow(FluentWindow):
         self.addSubInterface(self.records_interface, FIF.FOLDER, 'Records')
         self.addSubInterface(self.analytics_interface, FIF.TILES, 'Analytics')
         self.addSubInterface(self.watchlist_interface, FIF.SEARCH, 'Watchlist')
+        self.addSubInterface(self.comparison_interface, FIF.COMPLETED, 'Model Comparison')
         
         self.addSubInterface(self.settings_interface, FIF.SETTING, 'Settings', NavigationItemPosition.BOTTOM)
         self.addSubInterface(self.help_interface, FIF.INFO, 'Example Help', NavigationItemPosition.BOTTOM)
