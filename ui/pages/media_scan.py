@@ -7,7 +7,7 @@ import time
 import os
 
 class MediaWorker(QThread):
-    finished = pyqtSignal(object, int) # QImage (preview), count
+    finished = pyqtSignal(object, int, dict) # QImage (preview), count, metrics
     progress = pyqtSignal(int)
     error = pyqtSignal(str)
     
@@ -45,6 +45,9 @@ class MediaWorker(QThread):
             self.error.emit(str(e))
 
     def _process_image(self):
+        import time
+        start_time = time.time()
+        
         img = cv2.imread(self.path)
         if img is None:
             self.error.emit("Failed to read image")
@@ -82,25 +85,41 @@ class MediaWorker(QThread):
 
         self.progress.emit(100)
         
+        # Metrics for image (simpler)
+        metrics = {
+            'total_time': time.time() - start_time,
+            'is_image': True
+        }
+        
         # Convert for display
         qImg = self._to_qimage(img)
-        self.finished.emit(qImg, count)
+        self.finished.emit(qImg, count, metrics)
 
     def _process_video(self):
+        import time
+        
         cap = cv2.VideoCapture(self.path)
         if not cap.isOpened():
             self.error.emit("Failed to open video")
             return
             
+        # Get video metadata
         total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
-        if total_frames <= 0: total_frames = 1 # Prevent div/0
+        video_fps = cap.get(cv2.CAP_PROP_FPS)
+        if total_frames <= 0: total_frames = 1
+        if video_fps <= 0: video_fps = 30  # Default
         
+        # Metrics tracking
+        start_time = time.time()
         count = 0
         frame_idx = 0
+        frames_processed = 0
         last_display_frame = None
+        detection_times = []
         
-        # Process every Nth frame to be faster
-        SKIP_FRAMES = 5 
+        # Process 1 frame per second for faster processing
+        # If video is 30 FPS, skip 30 frames (process every 30th frame)
+        SKIP_FRAMES = int(video_fps) if video_fps > 0 else 30 
         
         while self.is_running:
             ret, frame = cap.read()
@@ -115,8 +134,11 @@ class MediaWorker(QThread):
             
             if frame_idx % SKIP_FRAMES != 0:
                 continue
-                
+            
+            frames_processed += 1
+            detect_start = time.time()
             results = self.detector.detect(frame)
+            detection_times.append(time.time() - detect_start)
             found_in_frame = False
             
             for res in results:
@@ -148,15 +170,32 @@ class MediaWorker(QThread):
 
         cap.release()
         
+        # Calculate metrics
+        end_time = time.time()
+        total_time = end_time - start_time
+        processing_fps = frames_processed / total_time if total_time > 0 else 0
+        avg_detection_time = sum(detection_times) / len(detection_times) if detection_times else 0
+        
+        metrics = {
+            'video_fps': video_fps,
+            'total_frames': total_frames,
+            'frames_processed': frames_processed,
+            'frames_skipped': total_frames - frames_processed,
+            'skip_ratio': SKIP_FRAMES,
+            'processing_fps': processing_fps,
+            'total_time': total_time,
+            'avg_detection_time': avg_detection_time * 1000,  # Convert to ms
+        }
+        
         if self.db:
             from core.signals import signal_bus
             signal_bus.database_updated.emit()
             
         if last_display_frame is not None:
              qImg = self._to_qimage(last_display_frame)
-             self.finished.emit(qImg, count)
+             self.finished.emit(qImg, count, metrics)
         else:
-             self.finished.emit(None, 0)
+             self.finished.emit(None, 0, metrics)
              
     def _to_qimage(self, img):
         height, width, channel = img.shape
@@ -221,7 +260,8 @@ class MediaScan(QWidget):
     def select_file(self):
         fname, _ = QFileDialog.getOpenFileName(self, 'Open file', 'c:\\', "Media (*.jpg *.png *.mp4 *.avi *.mov *.mkv)")
         if fname:
-            self.path_label.setText(fname)
+            filename = os.path.basename(fname)
+            self.path_label.setText(filename)
             self.status_label.setText("Preparing...")
             self.process_media(fname)
 
@@ -265,7 +305,7 @@ class MediaScan(QWidget):
         self.progress_bar.setValue(val)
         self.status_label.setText(f"Processing... {val}%")
 
-    def on_process_finished(self, q_img, count):
+    def on_process_finished(self, q_img, count, metrics):
         self.upload_btn.setEnabled(True)
         self.progress_bar.hide()
         
@@ -275,11 +315,27 @@ class MediaScan(QWidget):
         else:
              self.image_result_label.setText("No detections to display or bad file.")
         
-        self.status_label.setText(f"Completed! Found {count} plates.")
+        # Format metrics message
+        if metrics.get('is_image'):
+            metrics_text = f"Processing Time: {metrics['total_time']:.2f}s"
+        else:
+            # Video metrics
+            metrics_text = (
+                f"Video FPS: {metrics['video_fps']:.1f} | "
+                f"Processing FPS: {metrics['processing_fps']:.1f}\n"
+                f"Frames: {metrics['frames_processed']}/{metrics['total_frames']} processed "
+                f"(1 in {metrics['skip_ratio']})\n"
+                f"Total Time: {metrics['total_time']:.2f}s | "
+                f"Avg Detection: {metrics['avg_detection_time']:.1f}ms"
+            )
+        
+        self.status_label.setText(
+            f"Completed! Found {count} plates.\n{metrics_text}"
+        )
         
         InfoBar.success(
             title='Processing Complete',
-            content=f"Successfully detected {count} Number Plates.",
+            content=f"Detected {count} plates | Processed in {metrics.get('total_time', 0):.1f}s",
             orient=Qt.Horizontal,
             isClosable=True,
             position=InfoBarPosition.TOP_RIGHT,
