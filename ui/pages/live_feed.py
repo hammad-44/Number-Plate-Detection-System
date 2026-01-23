@@ -2,10 +2,13 @@ from PyQt5.QtCore import Qt, pyqtSlot, QThread, pyqtSignal
 from PyQt5.QtGui import QImage, QPixmap
 from PyQt5.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout, QLabel
 from qfluentwidgets import (PrimaryPushButton, PushButton, ComboBox, 
-                            StrongBodyLabel, CardWidget, FluentIcon as FIF)
+                            StrongBodyLabel, CardWidget, FluentIcon as FIF,
+                            BodyLabel, SubtitleLabel, InfoBadge)
+from ui.pages.vehicles import VehicleInfoDialog
 import cv2
 import numpy as np
 import time
+import re
 
 class DetectionWorker(QThread):
     result_ready = pyqtSignal(list, float)  # results, processing_time
@@ -71,8 +74,10 @@ class LiveFeed(QWidget):
         self.detection_worker = None
         self.detector = None
         self.ocr = None
-        self.is_running = False
         self.last_results = []
+        self.last_popup_plate = ""
+        self.last_popup_time = 0
+        self.is_running = False
         self.setObjectName('liveFeedInterface')
         
         self.init_ui()
@@ -106,9 +111,7 @@ class LiveFeed(QWidget):
         display_layout.addWidget(self.video_label)
         layout.addWidget(self.display_card)
         
-        # Results Overlay
-        self.result_label = StrongBodyLabel("Last Detected: -", self)
-        layout.addWidget(self.result_label)
+        layout.addStretch()
 
         # Signals
         self.start_btn.clicked.connect(self.start_feed)
@@ -210,10 +213,26 @@ class LiveFeed(QWidget):
             score = res.get('score', 0.0)
             
             if len(text) > 3:
-                self.result_label.setText(f"Last Detected: {text} ({score:.2f})")
+                # Normalization for matching
+                clean_text = re.sub(r'[^A-Z0-9]', '', text.upper())
                 
-                # Add to DB
-                # Note: We should probably throttle this or check for duplicates
+                # Cooldown logic for popup (10 seconds for same plate)
+                current_time = time.time()
+                is_new_plate = clean_text != self.last_popup_plate
+                is_cooldown_over = (current_time - self.last_popup_time) > 10
+                
+                if is_new_plate or is_cooldown_over:
+                    self.last_popup_plate = clean_text
+                    self.last_popup_time = current_time
+                    
+                    # Look up vehicle in DB
+                    vehicle = self.db.get_vehicle(text)
+                    
+                    # Show Popup Dialog
+                    w = VehicleInfoDialog(self, vehicle, text)
+                    w.exec()
+                
+                # Still log to DB for tracking
                 self.db.add_plate(text, score, "", "", "live", "camera")
                 
                 # Refresh Global UI

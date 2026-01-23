@@ -11,7 +11,7 @@ from ui.pages.settings import Settings
 from ui.pages.analytics import Analytics
 from ui.pages.watchlist import Watchlist
 from ui.pages.help import HelpPage
-from ui.pages.model_comparison import ModelComparisonPage
+from ui.pages.vehicles import VehiclesInterface
 from database.db_manager import DatabaseManager
 
 class MainWindow(FluentWindow):
@@ -32,15 +32,12 @@ class MainWindow(FluentWindow):
         self.records_interface = Records(self.db)
         self.analytics_interface = Analytics(self.db)
         self.watchlist_interface = Watchlist(self.db)
-        self.comparison_interface = ModelComparisonPage(self.db)
+        self.vehicles_interface = VehiclesInterface(self.db)
         self.help_interface = HelpPage(self.db)
         self.settings_interface = Settings(self.db)
         
         # Add Navigation Items
         self.init_navigation()
-        
-        # Apply Theme (Optional)
-        # qfluentwidgets.setTheme(qfluentwidgets.Theme.DARK)
 
     def init_navigation(self):
         self.addSubInterface(self.dashboard_interface, FIF.HOME, 'Dashboard')
@@ -49,10 +46,10 @@ class MainWindow(FluentWindow):
         self.addSubInterface(self.records_interface, FIF.FOLDER, 'Records')
         self.addSubInterface(self.analytics_interface, FIF.TILES, 'Analytics')
         self.addSubInterface(self.watchlist_interface, FIF.SEARCH, 'Watchlist')
-        self.addSubInterface(self.comparison_interface, FIF.COMPLETED, 'Model Comparison')
+        self.addSubInterface(self.vehicles_interface, FIF.CAR, 'Vehicle Database')
         
         self.addSubInterface(self.settings_interface, FIF.SETTING, 'Settings', NavigationItemPosition.BOTTOM)
-        self.addSubInterface(self.help_interface, FIF.INFO, 'Example Help', NavigationItemPosition.BOTTOM)
+        self.addSubInterface(self.help_interface, FIF.INFO, 'Help', NavigationItemPosition.BOTTOM)
         
         # Add some settings at bottom if needed
         # self.addSubInterface(self.setting_interface, FIF.SETTING, 'Settings', NavigationItemPosition.BOTTOM)

@@ -1,14 +1,19 @@
 from PyQt5.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout, QLabel, QFileDialog, QProgressBar
 from PyQt5.QtGui import QImage, QPixmap
 from PyQt5.QtCore import Qt, QThread, pyqtSignal
-from qfluentwidgets import PrimaryPushButton, StrongBodyLabel, CardWidget, FluentIcon as FIF, InfoBar, InfoBarPosition
+from qfluentwidgets import (PrimaryPushButton, StrongBodyLabel, CardWidget, 
+                            FluentIcon as FIF, InfoBar, InfoBarPosition,
+                            BodyLabel, SubtitleLabel, InfoBadge)
+from ui.pages.vehicles import VehicleInfoDialog
 import cv2
 import time
 import os
+import re
 
 class MediaWorker(QThread):
     finished = pyqtSignal(object, int, dict) # QImage (preview), count, metrics
     progress = pyqtSignal(int)
+    plate_detected = pyqtSignal(str, float)
     error = pyqtSignal(str)
     
     def __init__(self, path, db, detector, ocr):
@@ -71,6 +76,8 @@ class MediaWorker(QThread):
                 
                 if self.db:
                     self.db.add_plate(display_text, res['score'], self.path, "", "file", self.path)
+                
+                self.plate_detected.emit(display_text, res['score'])
                 
                 # Draw
                 color = (0, 255, 0) if text.strip() else (0, 0, 255) 
@@ -158,6 +165,8 @@ class MediaWorker(QThread):
                              # Timestamp can be calculated from frame_idx / fps
                              self.db.add_plate(display_text, res['score'], self.path, "", "file", self.path)
                         
+                        self.plate_detected.emit(display_text, res['score'])
+                        
                         count += 1
                         found_in_frame = True
                         
@@ -214,6 +223,8 @@ class MediaScan(QWidget):
         self.worker = None
         self.detector = None
         self.ocr = None
+        self.last_popup_plate = ""
+        self.last_popup_time = 0
         self.setObjectName('mediaScanInterface')
         self.init_ui()
 
@@ -255,6 +266,7 @@ class MediaScan(QWidget):
         card_layout.addWidget(self.image_result_label)
         
         layout.addWidget(self.preview_card)
+
         layout.addStretch()
 
     def select_file(self):
@@ -298,8 +310,30 @@ class MediaScan(QWidget):
         self.worker = MediaWorker(path, self.db, self.detector, self.ocr)
         self.worker.finished.connect(self.on_process_finished)
         self.worker.progress.connect(self.on_progress)
+        self.worker.plate_detected.connect(self.on_plate_detected)
         self.worker.error.connect(self.on_process_error)
         self.worker.start()
+
+    def on_plate_detected(self, text, score):
+        if len(text) > 3:
+            # Normalization for matching
+            clean_text = re.sub(r'[^A-Z0-9]', '', text.upper())
+            
+            # Cooldown logic for popup (5 seconds for file scans)
+            current_time = time.time()
+            is_new_plate = clean_text != self.last_popup_plate
+            is_cooldown_over = (current_time - self.last_popup_time) > 5
+            
+            if is_new_plate or is_cooldown_over:
+                self.last_popup_plate = clean_text
+                self.last_popup_time = current_time
+                
+                # Look up vehicle in DB
+                vehicle = self.db.get_vehicle(text)
+                
+                # Show Popup Dialog
+                w = VehicleInfoDialog(self, vehicle, text)
+                w.exec()
 
     def on_progress(self, val):
         self.progress_bar.setValue(val)

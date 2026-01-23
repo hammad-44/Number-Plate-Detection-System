@@ -43,7 +43,6 @@ class OCREngine:
             valid_blocks = [b for b in blocks if b['h'] >= 0.35 * max_height]
             
             if not valid_blocks:
-                print("OCR: No valid blocks after size filtering.")
                 return ""
                 
             # 2. Sort Left-to-Right
@@ -51,14 +50,8 @@ class OCREngine:
             
             # 3. Concatenate
             full_text = " ".join([b['text'] for b in valid_blocks])
-            print(f"OCR Raw Text (Filtered): {full_text}")
-            
             # 4. Clean and Validate
             clean_text = self.clean_and_format(full_text)
-            
-            if not clean_text:
-                print(f"OCR: Rejected '{full_text}' due to strict format mismatch.")
-            
             return clean_text
             
         except Exception as e:

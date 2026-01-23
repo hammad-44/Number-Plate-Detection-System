@@ -159,18 +159,4 @@ class PlateDetector:
 
         return results
     
-    def detect_with_timing(self, img):
-        """
-        Run inference and measure timing.
-        
-        Args:
-            img: Input image as numpy array
-            
-        Returns:
-            Tuple of (detections, inference_time_ms)
-        """
-        start_time = time.time()
-        detections = self.detect(img)
-        inference_time = (time.time() - start_time) * 1000  # Convert to ms
-        
-        return detections, inference_time
+        return results
