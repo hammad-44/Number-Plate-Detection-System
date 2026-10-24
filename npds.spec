@@ -7,6 +7,9 @@ block_cipher = None
 
 # Collect all dynamic libraries from onnxruntime
 onnx_binaries = collect_dynamic_libs('onnxruntime')
+# Also place dynamic libraries directly in the root of _internal for instant DLL loader resolution
+extra_onnx_binaries = [(src, '.') for src, _ in onnx_binaries]
+all_binaries = onnx_binaries + extra_onnx_binaries
 
 # Collect data files
 easyocr_datas = collect_data_files('easyocr')
@@ -23,6 +26,7 @@ app_datas = [
 hidden_imports = [
     'qfluentwidgets',
     'onnxruntime',
+    'onnxruntime.capi._pybind_state',
     'torch',
     'torchvision',
     'easyocr',
@@ -35,7 +39,7 @@ hidden_imports = [
 a = Analysis(
     ['main.py'],
     pathex=['.'],
-    binaries=onnx_binaries,
+    binaries=all_binaries,
     datas=app_datas,
     hiddenimports=hidden_imports,
     hookspath=[],

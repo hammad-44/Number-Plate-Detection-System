@@ -54,6 +54,17 @@ def copy_additional_assets():
             shutil.rmtree(dist_assets)
         shutil.copytree("assets", dist_assets)
 
+    # Ensure onnxruntime native DLLs are present directly alongside the .exe and in _internal root
+    import onnxruntime
+    ort_dir = Path(onnxruntime.__file__).parent / "capi"
+    for dll_name in ["onnxruntime.dll", "onnxruntime_providers_shared.dll"]:
+        src_dll = ort_dir / dll_name
+        if src_dll.exists():
+            shutil.copy2(src_dll, APP_DIR / dll_name)
+            internal_dir = APP_DIR / "_internal"
+            if internal_dir.exists():
+                shutil.copy2(src_dll, internal_dir / dll_name)
+
     # Add quickstart instructions
     readme_txt = APP_DIR / "RUN_INSTRUCTIONS.txt"
     readme_txt.write_text(
