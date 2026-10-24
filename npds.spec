@@ -5,11 +5,9 @@ from PyInstaller.utils.hooks import collect_data_files, collect_dynamic_libs, co
 
 block_cipher = None
 
-# Collect all dynamic libraries from onnxruntime
+# Collect dynamic libraries from onnxruntime
 onnx_binaries = collect_dynamic_libs('onnxruntime')
-# Also place dynamic libraries directly in the root of _internal for instant DLL loader resolution
-extra_onnx_binaries = [(src, '.') for src, _ in onnx_binaries]
-all_binaries = onnx_binaries + extra_onnx_binaries
+all_binaries = onnx_binaries
 
 # Collect data files
 easyocr_datas = collect_data_files('easyocr')
@@ -22,11 +20,16 @@ app_datas = [
     ('npds_data.db', '.'),
 ] + easyocr_datas + qfluentwidgets_datas
 
-# Hidden imports
-hidden_imports = [
-    'qfluentwidgets',
+# Explicit hidden imports for reliable runtime discovery
+hidden_imports = list(set([
     'onnxruntime',
     'onnxruntime.capi._pybind_state',
+    'onnxruntime.capi.onnxruntime_pybind11_state',
+    'numpy',
+    'numpy.core',
+    'numpy.core._methods',
+    'numpy.lib.format',
+    'qfluentwidgets',
     'torch',
     'torchvision',
     'easyocr',
@@ -34,7 +37,7 @@ hidden_imports = [
     'cv2',
     'sqlalchemy.sql.default_comparator',
     'sqlalchemy.dialects.sqlite',
-] + collect_submodules('qfluentwidgets')
+] + collect_submodules('qfluentwidgets')))
 
 a = Analysis(
     ['main.py'],

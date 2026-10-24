@@ -8,14 +8,17 @@ if getattr(sys, 'frozen', False):
     os.chdir(APP_DIR)
     sys.path.insert(0, MEI_DIR)
     
-    # Critical: Register DLL directories for onnxruntime, torch, and native extensions on Windows
+    # Critical: Register DLL directories for onnxruntime, torch, numpy, and native extensions on Windows
     if sys.platform == 'win32':
         candidate_dirs = [
             APP_DIR,
             MEI_DIR,
             os.path.join(MEI_DIR, 'onnxruntime', 'capi'),
             os.path.join(MEI_DIR, 'onnxruntime'),
+            os.path.join(MEI_DIR, 'numpy.libs'),
             os.path.join(MEI_DIR, 'torch', 'lib'),
+            os.path.join(MEI_DIR, 'PyQt5', 'Qt5', 'bin'),
+            os.path.join(APP_DIR, 'PyQt5', 'Qt5', 'bin'),
         ]
         for d in candidate_dirs:
             if os.path.isdir(d):
@@ -30,6 +33,7 @@ else:
     os.chdir(APP_DIR)
     sys.path.insert(0, APP_DIR)
 
+import numpy
 import onnxruntime
 
 from PyQt5.QtWidgets import QApplication

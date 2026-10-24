@@ -65,6 +65,17 @@ def copy_additional_assets():
             if internal_dir.exists():
                 shutil.copy2(src_dll, internal_dir / dll_name)
 
+    # Ensure matching MSVC runtime DLLs are bundled to eliminate DLL initialization failures
+    sys32 = Path(os.environ.get("SystemRoot", "C:\\Windows")) / "System32"
+    msvc_dlls = ["msvcp140.dll", "msvcp140_1.dll", "msvcp140_2.dll", "vcruntime140.dll", "vcruntime140_1.dll"]
+    for dll_name in msvc_dlls:
+        src_dll = sys32 / dll_name
+        if src_dll.exists():
+            shutil.copy2(src_dll, APP_DIR / dll_name)
+            internal_dir = APP_DIR / "_internal"
+            if internal_dir.exists():
+                shutil.copy2(src_dll, internal_dir / dll_name)
+
     # Add quickstart instructions
     readme_txt = APP_DIR / "RUN_INSTRUCTIONS.txt"
     readme_txt.write_text(
