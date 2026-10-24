@@ -210,7 +210,7 @@ class MediaWorker(QThread):
         height, width, channel = img.shape
         bytesPerLine = 3 * width
         qImg = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
-        return QImage(qImg.data, width, height, bytesPerLine, QImage.Format_RGB888)
+        return QImage(qImg.data, width, height, bytesPerLine, QImage.Format_RGB888).copy()
 
     def stop(self):
         self.is_running = False
@@ -227,6 +227,12 @@ class MediaScan(QWidget):
         self.last_popup_time = 0
         self.setObjectName('mediaScanInterface')
         self.init_ui()
+        from core.signals import signal_bus
+        signal_bus.conf_updated.connect(self.on_conf_updated)
+
+    def on_conf_updated(self, val):
+        if self.detector:
+            self.detector.conf_thres = val
 
     def init_ui(self):
         layout = QVBoxLayout(self)
@@ -316,10 +322,9 @@ class MediaScan(QWidget):
 
     def on_plate_detected(self, text, score):
         if len(text) > 3:
-            # Normalization for matching
             clean_text = re.sub(r'[^A-Z0-9]', '', text.upper())
             
-            # Cooldown logic for popup (5 seconds for file scans)
+            # Cooldown logic for alerts (5 seconds per plate)
             current_time = time.time()
             is_new_plate = clean_text != self.last_popup_plate
             is_cooldown_over = (current_time - self.last_popup_time) > 5
@@ -331,9 +336,33 @@ class MediaScan(QWidget):
                 # Look up vehicle in DB
                 vehicle = self.db.get_vehicle(text)
                 
-                # Show Popup Dialog
-                w = VehicleInfoDialog(self, vehicle, text)
-                w.exec()
+                # Check Watchlist
+                watchlist = self.db.get_watchlist()
+                is_in_watchlist = clean_text in [re.sub(r'[^A-Z0-9]', '', p.upper()) for p in watchlist]
+                is_stolen = vehicle is not None and vehicle.status == "Stolen"
+                
+                if is_in_watchlist or is_stolen:
+                    status_str = "STOLEN" if is_stolen else "ON WATCHLIST"
+                    owner_str = vehicle.owner_name if vehicle else "Unregistered"
+                    InfoBar.error(
+                        title=f"🚨 SECURITY ALERT: {status_str} VEHICLE!",
+                        content=f"Plate: {text} | Owner: {owner_str}",
+                        orient=Qt.Horizontal,
+                        isClosable=True,
+                        position=InfoBarPosition.TOP,
+                        duration=6000,
+                        parent=self
+                    )
+                elif vehicle:
+                    InfoBar.success(
+                        title=f"Vehicle Verified: {text}",
+                        content=f"Owner: {vehicle.owner_name} | Status: {vehicle.status}",
+                        orient=Qt.Horizontal,
+                        isClosable=True,
+                        position=InfoBarPosition.TOP_RIGHT,
+                        duration=3000,
+                        parent=self
+                    )
 
     def on_progress(self, val):
         self.progress_bar.setValue(val)

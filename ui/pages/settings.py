@@ -1,6 +1,7 @@
 from PyQt5.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout, QLabel, QSlider
 from PyQt5.QtCore import Qt
-from qfluentwidgets import (ScrollArea, SettingCardGroup, SettingCard, PushSettingCard, FluentIcon as FIF)
+from qfluentwidgets import (ScrollArea, SettingCardGroup, SettingCard, PushSettingCard, 
+                            FluentIcon as FIF, MessageBox, InfoBar, InfoBarPosition)
 from core.signals import signal_bus
 
 class Settings(QWidget):
@@ -31,7 +32,7 @@ class Settings(QWidget):
         
         # Custom Confidence Card (Manual implementation)
         self.conf_card = SettingCard(
-            FIF.VIEW, "Confidence Threshold", "Adjust the sensitivity (0.1 - 0.9)",
+            FIF.VIEW, "Confidence Threshold", "Adjust detection sensitivity (0.10 - 0.90)",
             self.ai_group
         )
         
@@ -70,18 +71,26 @@ class Settings(QWidget):
     def on_conf_change(self, value):
         fval = value / 100.0
         self.val_label.setText(f"{fval:.2f}")
-        # Here we would update the config or backend
-        # For now, just print or store in a global if needed
-        # signal_bus.conf_updated.emit(fval) # Future
-        
-        # Update detector if possible?
-        # Ideally, detector should read from a shared config.
-        pass
+        signal_bus.conf_updated.emit(fval)
 
     def clear_database(self):
-        # We need a method in db_manager for this
-        if hasattr(self.db, 'clear_all_records'):
-            self.db.clear_all_records()
-            signal_bus.database_updated.emit()
-        else:
-            print("DB Manager missing clear function")
+        w = MessageBox(
+            "Clear All Records?",
+            "Are you sure you want to permanently delete all detection logs? This cannot be undone.",
+            self
+        )
+        if w.exec():
+            if hasattr(self.db, 'clear_all_records'):
+                self.db.clear_all_records()
+                signal_bus.database_updated.emit()
+                InfoBar.success(
+                    title="Database Cleared",
+                    content="All detection logs have been removed.",
+                    orient=Qt.Horizontal,
+                    isClosable=True,
+                    position=InfoBarPosition.TOP,
+                    duration=3000,
+                    parent=self
+                )
+            else:
+                InfoBar.error("Error", "DB Manager missing clear function", parent=self)

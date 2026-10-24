@@ -31,7 +31,7 @@ class HelpPage(QWidget):
         
         c_layout.addSpacing(20)
         c_layout.addWidget(StrongBodyLabel("Credits:", self))
-        c_layout.addWidget(BodyLabel("Developed by Group 4", self))
+        c_layout.addWidget(BodyLabel("Developed by Hammad Haider", self))
         
         layout.addWidget(card)
         layout.addStretch()

@@ -1,4 +1,4 @@
-from PyQt5.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout, QLabel
+from PyQt5.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout, QLabel, QFileDialog
 from PyQt5.QtCore import Qt, QDate
 from qfluentwidgets import (CardWidget, TitleLabel, StrongBodyLabel, PrimaryPushButton, 
                             FluentIcon as FIF, InfoBar, DatePicker)
@@ -7,6 +7,7 @@ from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.figure import Figure
 from datetime import datetime, timedelta
 import csv
+from core.signals import signal_bus
 
 class Analytics(QWidget):
     def __init__(self, db_manager):
@@ -20,6 +21,9 @@ class Analytics(QWidget):
         
         self.init_ui()
         self.refresh_chart()
+        
+        # Auto-refresh when database changes
+        signal_bus.database_updated.connect(self.refresh_chart)
 
     def init_ui(self):
         layout = QVBoxLayout(self)
@@ -167,11 +171,14 @@ class Analytics(QWidget):
             InfoBar.warning('No Data', 'No data to export', parent=self)
             return
         
-        # Generate filename
-        filename = f"analytics_{start.strftime('%Y%m%d')}_{end.strftime('%Y%m%d')}.csv"
+        # Let user choose file destination safely
+        default_filename = f"analytics_{start.strftime('%Y%m%d')}_{end.strftime('%Y%m%d')}.csv"
+        file_path, _ = QFileDialog.getSaveFileName(self, "Export Analytics CSV", default_filename, "CSV Files (*.csv)")
+        if not file_path:
+            return
         
         try:
-            with open(filename, 'w', newline='') as f:
+            with open(file_path, 'w', newline='', encoding='utf-8') as f:
                 writer = csv.writer(f)
                 writer.writerow(['Date', 'Detection Count'])
                 for date_str, count in data:
@@ -179,7 +186,7 @@ class Analytics(QWidget):
             
             InfoBar.success(
                 'Export Successful',
-                f"Data saved to {filename}",
+                f"Data saved to {file_path}",
                 parent=self,
                 duration=3000
             )

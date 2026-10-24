@@ -1,10 +1,9 @@
-from PyQt5.QtCore import Qt, QTimer
-from PyQt5.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout, QLabel, QFrame
-from qfluentwidgets import (CardWidget, SimpleCardWidget, TitleLabel, BodyLabel, 
+from PyQt5.QtCore import Qt
+from PyQt5.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout, QLabel
+from qfluentwidgets import (CardWidget, TitleLabel, BodyLabel, 
                             StrongBodyLabel, IconWidget, FluentIcon as FIF,
-                            InfoBadge, InfoBar)
+                            InfoBadge)
 from core.signals import signal_bus
-import random
 
 class Dashboard(QWidget):
     def __init__(self, db_manager):
@@ -29,9 +28,9 @@ class Dashboard(QWidget):
         self.stats_layout = QHBoxLayout()
         self.v_layout.addLayout(self.stats_layout)
         
-        self.total_card = self.create_stat_card("Total Detections", "0", FIF.FOLDER)
-        self.today_card = self.create_stat_card("Today's Detections", "0", FIF.DATE_TIME)
-        self.status_card = self.create_stat_card("System Status", "Online", FIF.HEART)
+        self.total_card, self.total_val_label = self.create_stat_card("Total Detections", "0", FIF.FOLDER)
+        self.today_card, self.today_val_label = self.create_stat_card("Today's Detections", "0", FIF.DATE_TIME)
+        self.status_card, self.status_val_label = self.create_stat_card("System Status", "Online", FIF.HEART)
         
         self.stats_layout.addWidget(self.total_card)
         self.stats_layout.addWidget(self.today_card)
@@ -50,22 +49,24 @@ class Dashboard(QWidget):
         self.msgs_layout.addLayout(self.recent_list_layout)
         self.msgs_layout.addStretch()
         
-        self.content_layout.addWidget(self.msgs_card, 2) # Stretch factor 2
+        self.content_layout.addWidget(self.msgs_card, 2)
 
-        # Right Column: Quick Actions & Health
+        # Right Column: Quick Overview & Health
         self.right_col_layout = QVBoxLayout()
-        self.content_layout.addLayout(self.right_col_layout, 1) # Stretch factor 1
+        self.content_layout.addLayout(self.right_col_layout, 1)
         
-        # System Health
+        # System Overview
         self.health_card = CardWidget(self)
         health_layout = QVBoxLayout(self.health_card)
-        health_layout.addWidget(StrongBodyLabel("System Health", self))
+        health_layout.addWidget(StrongBodyLabel("Database Overview", self))
         
-        self.cpu_label = BodyLabel("CPU Usage: Low", self)
-        self.mem_label = BodyLabel("Memory: Normal", self)
+        self.db_vehicles_label = BodyLabel("Registered Vehicles: 0", self)
+        self.db_watchlist_label = BodyLabel("Watchlist Items: 0", self)
+        self.engine_label = BodyLabel("AI Inference: ONNX Runtime", self)
         
-        health_layout.addWidget(self.cpu_label)
-        health_layout.addWidget(self.mem_label)
+        health_layout.addWidget(self.db_vehicles_label)
+        health_layout.addWidget(self.db_watchlist_label)
+        health_layout.addWidget(self.engine_label)
         
         self.right_col_layout.addWidget(self.health_card)
         self.right_col_layout.addStretch()
@@ -78,14 +79,12 @@ class Dashboard(QWidget):
         card.setFixedHeight(100)
         
         h_layout = QHBoxLayout(card)
-        
         icon_widget = IconWidget(icon)
         icon_widget.setFixedSize(48, 48)
         
         v_layout = QVBoxLayout()
         title_label = BodyLabel(title)
         value_label = TitleLabel(value)
-        value_label.setObjectName("valueLabel") 
         
         v_layout.addWidget(title_label)
         v_layout.addWidget(value_label)
@@ -93,17 +92,23 @@ class Dashboard(QWidget):
         h_layout.addWidget(icon_widget)
         h_layout.addLayout(v_layout)
         
-        return card
+        return card, value_label
 
     def refresh_stats(self):
         total, today = self.db.get_stats()
+        self.total_val_label.setText(str(total))
+        self.today_val_label.setText(str(today))
         
-        # Update Cards (Dirty hack to access widgets - assuming structure stays same)
-        self.total_card.findChild(TitleLabel, "valueLabel").setText(str(total))
-        self.today_card.findChild(TitleLabel, "valueLabel").setText(str(today))
+        # Update Database Overview
+        try:
+            num_v = len(self.db.get_all_vehicles())
+            num_w = len(self.db.get_watchlist())
+            self.db_vehicles_label.setText(f"Registered Vehicles: {num_v}")
+            self.db_watchlist_label.setText(f"Watchlist Hotlist: {num_w}")
+        except Exception:
+            pass
         
         # Update Recent Activity
-        # Clear old
         while self.recent_list_layout.count():
             child = self.recent_list_layout.takeAt(0)
             if child.widget():
@@ -113,9 +118,8 @@ class Dashboard(QWidget):
         recents = self.db.get_recent_plates(5)
         for r in recents:
             row = QHBoxLayout()
-            # Badge
             badge = InfoBadge.success(r.number_text) if r.number_text != "[Unrecognized]" else InfoBadge.warning("???")
-            time_lbl = BodyLabel(r.timestamp.strftime("%H:%M:%S"))
+            time_lbl = BodyLabel(r.timestamp.strftime("%H:%M:%S") if r.timestamp else "-")
             
             row.addWidget(badge)
             row.addWidget(time_lbl)

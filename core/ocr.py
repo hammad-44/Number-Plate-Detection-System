@@ -1,11 +1,13 @@
 import easyocr
 import re
 import numpy as np
+import torch
 
 class OCREngine:
     def __init__(self, languages=['en']):
-        print("Initializing OCR Engine...")
-        self.reader = easyocr.Reader(languages, gpu=True) 
+        use_gpu = torch.cuda.is_available()
+        print(f"Initializing OCR Engine (GPU: {use_gpu})...")
+        self.reader = easyocr.Reader(languages, gpu=use_gpu) 
 
     def recognize(self, plate_image):
         """
@@ -65,15 +67,10 @@ class OCREngine:
         """
         text = text.upper()
         
-        # 1. Blacklist for "Noise" words that are visually large but are NOT the registration
-        BLACKLIST = {
-            'ISLAMABAD', 'PUNJAB', 'SINDH', 'KPK', 'BALOCHISTAN', 
-            'PAKISTAN', 'GOVT', 'APPLIED', 'FOR', 'ICT', 'LEB', 'LEE' # Wait, LEB/LEE are valid!
-        }
-        # Refined Blacklist
+        # Noise words that are visually large on plates but are NOT the registration
         NOISE_WORDS = {
             'ISLAMABAD', 'PUNJAB', 'SINDH', 'KPK', 'BALOCHISTAN', 'PAKISTAN', 
-            'GOVERNMENT', 'GOVT', 'APPLIED', 'FOR', 'ICT' # ICT is often top header, actual plate is e.g. AB-123
+            'GOVERNMENT', 'GOVT', 'APPLIED', 'FOR', 'ICT'
         }
 
         # 1. Extract all logical tokens

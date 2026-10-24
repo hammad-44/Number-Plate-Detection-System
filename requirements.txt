@@ -1,5 +1,4 @@
 PyQt5
-PyQtWebEngine
 PyQt-Fluent-Widgets
 numpy
 opencv-python
@@ -11,4 +10,3 @@ torchvision
 matplotlib
 sqlalchemy
 pillow
-ultralytics

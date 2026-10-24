@@ -12,8 +12,12 @@ class VideoThread(QThread):
         self.is_video_file = isinstance(source, str)
 
     def run(self):
-        # source can be int (camera index) or string (video path)
+        # source can be int (camera index) or string (video path / rtsp URL)
         cap = cv2.VideoCapture(self.source)
+        if not cap.isOpened():
+            print(f"Failed to open video source: {self.source}")
+            self.stop()
+            return
         
         while self._run_flag:
             ret, frame = cap.read()
@@ -21,16 +25,16 @@ class VideoThread(QThread):
                 self.change_pixmap_signal.emit(frame)
                 
                 # If video file, control speed or loop
-                # If camera, it waits for hardware naturally (usually)
                 if self.is_video_file:
-                     time.sleep(1/30) # Approx 30 FPS cap for files
+                    time.sleep(1/30) # Approx 30 FPS cap for files
             else:
                 if self.is_video_file:
                     # End of file
                     self.stop()
+                    break
                 else:
-                    # Camera read error, maybe retry
-                    pass
+                    # Camera read error or stream dropped - sleep briefly to prevent 100% CPU lockup
+                    time.sleep(0.05)
         
         cap.release()
 

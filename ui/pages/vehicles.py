@@ -9,6 +9,9 @@ from qfluentwidgets import (TableWidget, PrimaryPushButton, SearchLineEdit,
                             Dialog, MessageBoxBase, InfoBar, InfoBarPosition,
                             ComboBox, ToolButton, TransparentToolButton, CaptionLabel,
                             SingleDirectionScrollArea, InfoBadge)
+
+
+class VehicleInfoDialog(MessageBoxBase):
     """ Read-only dialog to display detected vehicle information """
     def __init__(self, parent, vehicle, plate_text):
         super().__init__(parent)
@@ -180,7 +183,7 @@ class AddVehicleDialog(MessageBoxBase):
         
         # Strip spaces/hyphens for final database format check
         norm_plate = re.sub(r'[^A-Z0-9]', '', data['plate_number']).upper()
-        if not re.match(r'^[A-Z]{2,3}\d{1,4}$', norm_plate):
+        if not re.match(r'^[A-Z]{1,4}\d{1,5}$', norm_plate):
             return False, "Invalid Plate Format! Example: ABC 1234 or LE-123"
             
         if data['owner_contact'] and not re.match(r'^(\+92|0)3\d{9}$', data['owner_contact'].replace("-","")):
@@ -189,8 +192,6 @@ class AddVehicleDialog(MessageBoxBase):
         if not data['owner_name']:
             return False, "Owner name is required!"
             
-        return True, ""
-
         return True, ""
 
     def on_text_changed(self, key, text):

@@ -75,88 +75,61 @@ class PlateDetector:
         else: # (1, 84, 8400) - likely v8 structure
              predictions = output[0].transpose()
         
-        boxes = []
-        confidences = []
-        class_ids = []
-        
-        # Iterate and filter
-        # Format usually: x, y, w, h, class_scores...
-        # If output is [x, y, w, h, obj_conf, class_scores...] (YOLOv5)
-        # If output is [x, y, w, h, class_scores...] (YOLOv8)
-        
-        rows = predictions.shape[0]
-        
-        # Let's assume YOLOv8 format where 4 items are box, rest are classes
-        # or YOLOv5 format where index 4 is objness.
-        
-        # We need to be generic or check dimensions.
-        # Assuming user's model is standard YOLO export.
-        
-        for i in range(rows):
-            row = predictions[i]
-            if len(row) > 5: # Possible YOLOv5 [x,y,w,h, conf, cls...]
-                 confidence = row[4]
-                 if confidence < self.conf_thres:
-                     continue
-                 classes_scores = row[5:]
-                 class_id = np.argmax(classes_scores)
-                 score = classes_scores[class_id] * confidence # multiply by obj conf
-            else: # Possible YOLOv8 [x,y,w,h, cls1, cls2...] or just 1 class
-                 classes_scores = row[4:]
-                 class_id = np.argmax(classes_scores)
-                 score = classes_scores[class_id]
-                 confidence = score # For v8, score is confidence
-            
-            if score > self.conf_thres:
-                x, y, w, h = row[0:4]
-                
-                # Scale boxes back to original image size
-                # The prediction is extracting on 640x640 range
-                
-                # We need to unscale.
-                # However, since we did direct resize, we just scale by ratio
-                w_scale = original_size[0] / self.input_shape[0]
-                h_scale = original_size[1] / self.input_shape[1]
-                
-                x = x * w_scale
-                y = y * h_scale
-                w = w * w_scale
-                h = h * h_scale
-                
-                # Convert to top-left x,y,w,h for NMS
-                left = int(x - w/2)
-                top = int(y - h/2)
-                width = int(w)
-                height = int(h)
-                
-                boxes.append([left, top, width, height])
-                confidences.append(float(score))
-                class_ids.append(class_id)
+        # Fast vectorized filtering
+        if predictions.shape[1] == 5:
+            scores = predictions[:, 4]
+            class_ids = np.zeros(len(scores), dtype=int)
+        elif predictions.shape[1] > 5:
+            class_scores = predictions[:, 4:]
+            class_ids = np.argmax(class_scores, axis=1)
+            scores = np.max(class_scores, axis=1)
+        else:
+            return []
+
+        mask = scores > self.conf_thres
+        if not np.any(mask):
+            return []
+
+        filtered_preds = predictions[mask]
+        filtered_scores = scores[mask]
+        filtered_class_ids = class_ids[mask]
+
+        # Scale coordinates back to original image size
+        w_scale = original_size[0] / self.input_shape[0]
+        h_scale = original_size[1] / self.input_shape[1]
+
+        cx = filtered_preds[:, 0] * w_scale
+        cy = filtered_preds[:, 1] * h_scale
+        w = filtered_preds[:, 2] * w_scale
+        h = filtered_preds[:, 3] * h_scale
+
+        left = (cx - w / 2).astype(int)
+        top = (cy - h / 2).astype(int)
+        width = w.astype(int)
+        height = h.astype(int)
+
+        boxes = np.column_stack([left, top, width, height]).tolist()
+        confidences = [float(s) for s in filtered_scores]
+        class_ids_list = [int(c) for c in filtered_class_ids]
 
         indices = cv2.dnn.NMSBoxes(boxes, confidences, self.conf_thres, self.iou_thres)
         
         results = []
         if len(indices) > 0:
-            for i in indices: # indices might be list of standard python ints or numpy
-                if isinstance(i, (list, tuple, np.ndarray)):
-                    idx = i[0] # Unpack if needed
-                else:
-                    idx = i
-                    
+            for i in indices:
+                idx = i[0] if isinstance(i, (list, tuple, np.ndarray)) else i
                 box = boxes[idx]
                 x, y, w, h = box
-                # Ensure they are within image bounds
+                # Clamp within image bounds
                 x = max(0, x)
                 y = max(0, y)
                 w = min(w, original_size[0] - x)
                 h = min(h, original_size[1] - y)
                 
                 results.append({
-                    "box": [x, y, x+w, y+h], # x1, y1, x2, y2
+                    "box": [x, y, x + w, y + h],
                     "score": confidences[idx],
-                    "class_id": class_ids[idx]
+                    "class_id": class_ids_list[idx]
                 })
 
-        return results
-    
         return results
